@@ -1,0 +1,62 @@
+version: "3.7"
+services:
+  nginx_hobby:
+    image: nginx:1.16-alpine
+    container_name: nginx_hobby
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./api:/var/www/api
+      - ./docker/nginx:/etc/nginx/conf.d/
+      - ./docker/certs:/etc/nginx/certs
+    networks:
+      - hobby_network
+    depends_on:
+      - api_hobby
+
+  db_hobby:
+    image: mysql:8.0.31
+    container_name: db_hobby
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: hobby_app_db
+      MYSQL_ROOT_PASSWORD: hobby_app_password
+      MYSQL_PASSWORD: hobby_app_password
+      MYSQL_USER: hobby_app_user
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - ./db_data:/var/lib/mysql
+      - ./docker/mysql:/etc/mysql/conf.d
+    networks:
+      - hobby_network
+
+  api_hobby:
+    build:
+      args:
+        user: ${SYSTEM_USER_NAME}
+        uid: ${SYSTEM_USER_UID}
+      context: ./docker
+      dockerfile: Back.Dockerfile
+    tty: true
+    container_name: api_hobby
+    restart: unless-stopped
+    working_dir: /var/www/api
+    volumes:
+      - ./api:/var/www/api
+    networks:
+      - hobby_network
+    links:
+      - db_hobby
+
+volumes:
+  db_data:
+
+networks:
+  hobby_network:
+    driver: bridge
